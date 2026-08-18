@@ -15,6 +15,15 @@ print("")
 // 1. フォルダを見つけられるか
 check("chime.py のフォルダを見つけた", Runner.root != nil, Runner.root?.path ?? "")
 
+// 予定データがまだ無いときは、ここから先は検査できない。
+if Runner.needsSetup {
+    print("")
+    print("data/ がまだ無いので、予定まわりの検査は省略した。")
+    print("チャイム.app を開いて最初の画面から作るか、次を実行する:")
+    print("  python3 chime.py init --start 2026-04-06 --end 2027-03-20")
+    exit(failures == 0 ? 0 : 1)
+}
+
 // 2. agenda の JSON を Swift の型に取り込めるか
 var agenda: Agenda?
 do {
@@ -76,6 +85,60 @@ do {
           a.map { "\($0.events.first!.time) \($0.events.first!.label)" } ?? "")
 } catch {
     check("routines.json を読み込んだ", false, error.localizedDescription)
+}
+
+// 7. カレンダー画面: 読み出しと、わりあての往復ができるか
+do {
+    let file = try Runner.json(CalendarFile.self,
+                               ["calendar-get", "--start", "2026-08-01", "--days", "42"])
+    check("カレンダーを読み込んだ", file.days.count == 42,
+          "\(file.study_period.start) 〜 \(file.study_period.end) / \(file.days.count)マス")
+
+    // 期間内の日には必ず日課が決まる（何もわりあてていなくても曜日どおりになる）
+    let inPeriod = file.days.filter {
+        $0.date >= file.study_period.start && $0.date <= file.study_period.end
+    }
+    check("期間内の日にはすべて日課がある",
+          !inPeriod.isEmpty && inPeriod.allSatisfy { $0.day_type != nil },
+          "\(inPeriod.count)日を確認")
+
+    // わりあて → 反映 → 取り消し が往復するか。元の状態は必ず戻す。
+    /// 画面の「わりあて」と同じ経路（calendar-set）を叩く。
+    func assign(_ date: String, _ type: String) throws -> Bool {
+        let patch = ["types": [date: type]]
+        let text = String(data: try JSONSerialization.data(withJSONObject: patch),
+                          encoding: .utf8)!
+        let out = try Runner.run(["calendar-set", "--json", text])
+        let obj = try JSONSerialization.jsonObject(with: out) as? [String: Any]
+        return obj?["ok"] as? Bool == true
+    }
+
+    if let target = inPeriod.first(where: { $0.assigned == nil }),
+       let want = file.day_types.first(where: { $0.key != target.day_type }) {
+        let ok = try assign(target.date, want.key)
+        let after = try Runner.json(CalendarFile.self,
+                                    ["calendar-get", "--start", target.date, "--days", "1"])
+        check("日付に日課をわりあてられた",
+              ok && after.days.first?.assigned == want.key,
+              "\(target.date) → \(want.title)")
+
+        // 空文字でわりあてを取り消し、元の状態に戻す
+        let cleared = try assign(target.date, "")
+        let restored = try Runner.json(CalendarFile.self,
+                                       ["calendar-get", "--start", target.date, "--days", "1"])
+        check("わりあてを取り消して元に戻せた",
+              cleared && restored.days.first?.assigned == nil
+                  && restored.days.first?.day_type == target.day_type,
+              "\(target.date) → \(restored.days.first?.title ?? "なし")")
+    } else {
+        check("わりあてを試せる日があった", false, "空きの日が見つからない")
+    }
+
+    // 知らない日課タイプは弾かれるか
+    check("知らない日課タイプは拒まれる",
+          try assign("2026-08-01", "存在しない日課") == false)
+} catch {
+    check("カレンダーを読み込んだ", false, error.localizedDescription)
 }
 
 print("")

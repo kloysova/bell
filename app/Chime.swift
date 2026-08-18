@@ -1,4 +1,4 @@
-// チャイム.app — 学習カレンダーPDFの予定どおりに学校のチャイムを鳴らす常駐アプリ。
+// チャイム.app — 決めた予定どおりに学校のチャイムを鳴らす常駐アプリ。
 //
 // 予定の計算は隣の chime.py に任せている（ターミナルの表示とアプリが食い違わないように）。
 // このファイルは UI と、時刻がきたら音を鳴らす部分だけを持つ。
@@ -56,6 +56,28 @@ struct Agenda: Decodable {
     let days: [Day]
 }
 
+/// カレンダー画面用。calendar-get の出力。
+struct CalendarFile: Decodable {
+    struct Period: Decodable, Equatable {
+        var start: String
+        var end: String
+    }
+    struct Day: Decodable, Identifiable {
+        var id: String { date }
+        let date: String
+        let weekday: String
+        let label: String
+        let assigned: String?
+        let day_type: String?
+        let title: String?
+        let count: Int
+        let disabled: Bool
+    }
+    let study_period: Period
+    let day_types: [Agenda.DayType]
+    let days: [Day]
+}
+
 struct RoutinesFile: Decodable {
     struct Routine: Decodable {
         let title: String
@@ -98,6 +120,13 @@ enum Runner {
         candidates.append(fm.homeDirectoryForCurrentUser.appendingPathComponent("Desktop/チャイム"))
         return candidates.first { fm.fileExists(atPath: $0.appendingPathComponent("chime.py").path) }
     }()
+
+    /// data/calendar.json がまだ無い＝はじめて使う状態。
+    static var needsSetup: Bool {
+        guard let root else { return false }
+        return !FileManager.default.fileExists(
+            atPath: root.appendingPathComponent("data/calendar.json").path)
+    }
 
     @discardableResult
     static func run(_ args: [String]) throws -> Data {
@@ -151,6 +180,7 @@ func postNotification(title: String, body: String) -> Bool {
 final class Engine: ObservableObject {
     @Published private(set) var agenda: Agenda?
     @Published private(set) var errorText: String?
+    @Published private(set) var needsSetup = Runner.needsSetup
     @Published private(set) var lastRung: (label: String, at: Date)?
 
     private var rings: [Ring] = []
@@ -214,6 +244,14 @@ final class Engine: ObservableObject {
 
     func reload() {
         browseCache.removeAll()
+        needsSetup = Runner.needsSetup
+        if needsSetup {
+            agenda = nil
+            errorText = nil
+            rings = []
+            objectWillChange.send()
+            return
+        }
         do {
             let fetched = try Runner.json(Agenda.self, ["agenda", "--days", "3"])
             agenda = fetched
@@ -323,12 +361,132 @@ final class Engine: ObservableObject {
         }
     }
 
+    /// はじめて使うときに data/ を作る。成功したら nil、失敗したら理由を返す。
+    func setUp(start: Date, end: Date) -> String? {
+        let f = Self.dayFormatter
+        do {
+            try Runner.run(["init", "--start", f.string(from: start),
+                            "--end", f.string(from: end)])
+            reload()
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    /// カレンダー画面用。指定日から days 日ぶんの割り当てを読む。
+    func calendar(from: Date, days: Int) -> CalendarFile? {
+        try? Runner.json(CalendarFile.self,
+                         ["calendar-get", "--start", Self.dayFormatter.string(from: from),
+                          "--days", String(days)])
+    }
+
+    /// 日付への日課の割り当てを書き換える。type が nil なら割り当てを消す。
+    @discardableResult
+    func assign(date: String, type: String?) -> String? {
+        setCalendar(["types": [date: type ?? ""]])
+    }
+
+    /// 学習期間を書き換える。
+    @discardableResult
+    func setPeriod(start: Date, end: Date) -> String? {
+        let f = Self.dayFormatter
+        return setCalendar(["study_period": ["start": f.string(from: start),
+                                             "end": f.string(from: end)]])
+    }
+
+    private func setCalendar(_ patch: [String: Any]) -> String? {
+        guard let data = try? JSONSerialization.data(withJSONObject: patch),
+              let text = String(data: data, encoding: .utf8) else { return "書き出せなかった" }
+        do {
+            let out = try Runner.run(["calendar-set", "--json", text])
+            if let obj = try? JSONSerialization.jsonObject(with: out) as? [String: Any],
+               obj["ok"] as? Bool == false {
+                return obj["error"] as? String ?? "保存できなかった"
+            }
+            reload()
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
     func loadRoutines() -> RoutinesFile? {
         try? Runner.json(RoutinesFile.self, ["routines-get"])
     }
 }
 
 // MARK: - メインウインドウ
+
+/// はじめて使うときの画面。data/ がまだ無いときに出る。
+struct SetupView: View {
+    @ObservedObject var engine: Engine
+    @State private var start = Date()
+    @State private var end = SetupView.defaultEnd()
+    @State private var error: String?
+    @State private var working = false
+
+    /// 学習期間の終わりの初期値。次にくる 3月31日。
+    static func defaultEnd() -> Date {
+        let cal = Foundation.Calendar.current
+        let now = Date()
+        var c = cal.dateComponents([.year], from: now)
+        c.month = 3; c.day = 31
+        let thisYear = cal.date(from: c) ?? now
+        return thisYear > now ? thisYear
+            : cal.date(byAdding: .year, value: 1, to: thisYear) ?? now
+    }
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Spacer(minLength: 0)
+            VStack(spacing: 10) {
+                Image(systemName: "bell.fill")
+                    .font(.system(size: 40)).foregroundStyle(Color.accentColor)
+                Text("チャイムへようこそ").font(.title).fontWeight(.semibold)
+                Text("決めた時刻に学校のチャイムを鳴らします。\nまず、いつからいつまで使うかを決めます。")
+                    .multilineTextAlignment(.center).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.bottom, 4)
+
+            Form {
+                Section("使う期間") {
+                    DatePicker("始まり", selection: $start, displayedComponents: .date)
+                    DatePicker("終わり", selection: $end, in: start..., displayedComponents: .date)
+                }
+                Section {
+                    Text("平日・土曜・日曜・長期休暇・考査日・祝日などの日課を、"
+                       + "よくある時間割で用意します。時刻も内容も、あとから設定画面で自由に変えられます。")
+                        .font(.callout).foregroundStyle(.secondary)
+                }
+            }
+            .formStyle(.grouped)
+            .frame(maxHeight: 230)
+            .scrollDisabled(true)
+
+            if let error {
+                Text(error).font(.callout).foregroundStyle(.red)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+            }
+
+            Button(working ? "作成中…" : "はじめる") { create() }
+                .buttonStyle(.borderedProminent).controlSize(.large)
+                .disabled(working)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 28)
+        .frame(minWidth: 560, minHeight: 540)
+    }
+
+    private func create() {
+        working = true
+        error = engine.setUp(start: start, end: end)
+        working = false
+    }
+}
 
 struct MainView: View {
     @ObservedObject var engine: Engine
@@ -352,18 +510,24 @@ struct MainView: View {
     private var day: Agenda.Day? { engine.day(for: shown) }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            Divider()
-            if let error = engine.errorText {
-                errorBox(error)
+        Group {
+            if engine.needsSetup {
+                SetupView(engine: engine)
             } else {
-                schedule
+                VStack(spacing: 0) {
+                    header
+                    Divider()
+                    if let error = engine.errorText {
+                        errorBox(error)
+                    } else {
+                        schedule
+                    }
+                    Divider()
+                    footer
+                }
+                .frame(minWidth: 560, minHeight: 540)
             }
-            Divider()
-            footer
         }
-        .frame(minWidth: 560, minHeight: 540)
         .onReceive(ticker) { now = $0 }
     }
 
@@ -506,13 +670,15 @@ struct SettingsView: View {
         TabView(selection: $tab) {
             GeneralTab(engine: engine)
                 .tabItem { Label("基本", systemImage: "bell") }.tag(0)
+            CalendarTab(engine: engine)
+                .tabItem { Label("カレンダー", systemImage: "calendar") }.tag(1)
             RoutineTab(engine: engine)
-                .tabItem { Label("日課の編集", systemImage: "list.bullet") }.tag(1)
+                .tabItem { Label("日課の編集", systemImage: "list.bullet") }.tag(2)
             DatesTab(engine: engine)
-                .tabItem { Label("日付ごとの設定", systemImage: "calendar") }.tag(2)
+                .tabItem { Label("そのほか", systemImage: "slider.horizontal.3") }.tag(3)
         }
         .padding(16)
-        .frame(width: 620, height: 500)
+        .frame(width: 680, height: 640)
     }
 }
 
@@ -589,6 +755,264 @@ struct GeneralTab: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+/// 日付にどの日課をわりあてるかを、月のカレンダーで決める画面。
+struct CalendarTab: View {
+    @ObservedObject var engine: Engine
+    @State private var month = Date()
+    @State private var file: CalendarFile?
+    @State private var selection: Set<String> = []
+    @State private var lastPicked: String?
+    @State private var message: String?
+    @State private var periodStart = Date()
+    @State private var periodEnd = Date()
+    @State private var periodLoaded = false
+
+    private let cal = Foundation.Calendar.current
+
+    private static let monthTitle: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ja_JP")
+        f.dateFormat = "yyyy年M月"
+        return f
+    }()
+
+    private static let key: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
+    /// 日課タイプごとの色。凡例とマス目で同じ色を使う。
+    private static let palette: [Color] = [.blue, .green, .orange, .purple, .pink,
+                                           .teal, .indigo, .brown, .red]
+
+    private func color(for type: String?) -> Color? {
+        guard let type, let types = file?.day_types,
+              let i = types.firstIndex(where: { $0.key == type }) else { return nil }
+        return Self.palette[i % Self.palette.count]
+    }
+
+    /// グリッドの左上（その月の1日を含む週の日曜）。
+    private var gridStart: Date {
+        let first = cal.date(from: cal.dateComponents([.year, .month], from: month)) ?? month
+        let offset = cal.component(.weekday, from: first) - 1
+        return cal.date(byAdding: .day, value: -offset, to: first) ?? first
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            period
+            Divider()
+            monthHeader
+            weekdayRow
+            grid
+            Divider()
+            assignBar
+        }
+        .onAppear(perform: load)
+    }
+
+    // MARK: 学習期間
+
+    private var period: some View {
+        HStack(spacing: 8) {
+            Text("使う期間").fontWeight(.medium)
+            DatePicker("", selection: $periodStart, displayedComponents: .date)
+                .labelsHidden()
+            Text("〜").foregroundStyle(.secondary)
+            DatePicker("", selection: $periodEnd, in: periodStart..., displayedComponents: .date)
+                .labelsHidden()
+            Button("変更") {
+                message = engine.setPeriod(start: periodStart, end: periodEnd) ?? "期間を変えた"
+                load()
+            }
+            Spacer()
+        }
+    }
+
+    // MARK: 月の移動
+
+    private var monthHeader: some View {
+        HStack(spacing: 10) {
+            Button { move(-1) } label: { Image(systemName: "chevron.left") }
+            Text(Self.monthTitle.string(from: month)).font(.title3).fontWeight(.semibold)
+            Button { move(1) } label: { Image(systemName: "chevron.right") }
+            Button("今月") { month = Date(); load() }
+            Spacer()
+            Text("クリックで選ぶ／⇧クリックで範囲／⌘クリックで追加")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    private func move(_ months: Int) {
+        month = cal.date(byAdding: .month, value: months, to: month) ?? month
+        load()
+    }
+
+    private var weekdayRow: some View {
+        HStack(spacing: 4) {
+            ForEach(Array("日月火水木金土".map(String.init)), id: \.self) { w in
+                Text(w).font(.caption).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    // MARK: マス目
+
+    private var grid: some View {
+        let days = file?.days ?? []
+        return VStack(spacing: 4) {
+            ForEach(0..<6, id: \.self) { row in
+                HStack(spacing: 4) {
+                    ForEach(0..<7, id: \.self) { col in
+                        let i = row * 7 + col
+                        if i < days.count { cell(days[i]) } else { Color.clear }
+                    }
+                }
+            }
+        }
+    }
+
+    private func cell(_ day: CalendarFile.Day) -> some View {
+        let inMonth = Self.key.date(from: day.date).map {
+            cal.isDate($0, equalTo: month, toGranularity: .month)
+        } ?? false
+        let picked = selection.contains(day.date)
+        let tint = color(for: day.day_type)
+        let isToday = day.date == Self.key.string(from: Date())
+
+        return VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 3) {
+                Text(String(Int(day.date.suffix(2)) ?? 0))
+                    .font(.callout).fontWeight(isToday ? .bold : .regular)
+                    .monospacedDigit()
+                if day.assigned != nil {
+                    Circle().fill(tint ?? .secondary).frame(width: 5, height: 5)
+                }
+                Spacer(minLength: 0)
+            }
+            Text(day.disabled ? "鳴らさない" : (day.title ?? "—"))
+                .font(.system(size: 9)).lineLimit(2)
+                .foregroundStyle(day.disabled ? Color.secondary : (tint ?? .secondary))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Spacer(minLength: 0)
+        }
+        .padding(4)
+        .frame(maxWidth: .infinity, minHeight: 52, alignment: .topLeading)
+        .background((tint ?? .gray).opacity(picked ? 0.35 : 0.10),
+                    in: RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6)
+            .strokeBorder(picked ? Color.accentColor : (isToday ? Color.primary.opacity(0.5) : .clear),
+                          lineWidth: picked ? 2 : 1))
+        .opacity(inMonth ? 1 : 0.35)
+        .contentShape(Rectangle())
+        .onTapGesture { pick(day.date) }
+    }
+
+    /// ⇧で範囲、⌘で足し引き、ふつうのクリックは選び直し。
+    private func pick(_ date: String) {
+        let flags = NSEvent.modifierFlags
+        if flags.contains(.shift), let anchor = lastPicked,
+           let all = file?.days.map(\.date),
+           let a = all.firstIndex(of: anchor), let b = all.firstIndex(of: date) {
+            selection = Set(all[min(a, b)...max(a, b)])
+        } else if flags.contains(.command) {
+            if selection.contains(date) { selection.remove(date) } else { selection.insert(date) }
+            lastPicked = date
+        } else {
+            selection = [date]
+            lastPicked = date
+        }
+    }
+
+    // MARK: わりあて
+
+    private var assignBar: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text(selection.isEmpty ? "日付を選ぶと、下から日課をわりあてられる"
+                                       : "\(selection.count)日を選択中 — わりあてる日課を選ぶ")
+                    .foregroundStyle(selection.isEmpty ? .secondary : .primary)
+                Spacer()
+                if let message {
+                    Text(message).font(.caption)
+                        .foregroundStyle(message.hasSuffix("た") ? Color.secondary : Color.red)
+                }
+            }
+            FlowRow {
+                ForEach(file?.day_types ?? [], id: \.key) { type in
+                    Button {
+                        apply(type.key)
+                    } label: {
+                        HStack(spacing: 4) {
+                            Circle().fill(color(for: type.key) ?? .gray)
+                                .frame(width: 7, height: 7)
+                            Text(type.title).lineLimit(1)
+                        }
+                    }
+                    .disabled(selection.isEmpty)
+                }
+                Button("曜日どおりに戻す") { apply(nil) }
+                    .disabled(selection.isEmpty)
+            }
+            Text("わりあてた日には点が付く。わりあてていない日は曜日どおり。")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    private func apply(_ type: String?) {
+        var failed: String?
+        for date in selection.sorted() {
+            if let error = engine.assign(date: date, type: type) { failed = error; break }
+        }
+        message = failed ?? (type == nil ? "曜日どおりに戻した" : "わりあてた")
+        load()
+    }
+
+    private func load() {
+        file = engine.calendar(from: gridStart, days: 42)
+        if let period = file?.study_period, !periodLoaded {
+            periodStart = Self.key.date(from: period.start) ?? Date()
+            periodEnd = Self.key.date(from: period.end) ?? Date()
+            periodLoaded = true
+        }
+    }
+}
+
+/// ボタンを折り返して並べる。日課タイプの数が増えても崩れないように。
+struct FlowRow: Layout {
+    var spacing: CGFloat = 6
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 500
+        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if x + size.width > width, x > 0 {
+                x = 0; y += rowHeight + spacing; rowHeight = 0
+            }
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+        return CGSize(width: width, height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize,
+                       subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX, y = bounds.minY, rowHeight: CGFloat = 0
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if x + size.width > bounds.maxX, x > bounds.minX {
+                x = bounds.minX; y += rowHeight + spacing; rowHeight = 0
+            }
+            view.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
     }
 }
 
@@ -721,7 +1145,7 @@ struct DatesTab: View {
                         newType = ""
                     }.disabled(newType.isEmpty)
                 }
-                Text("PDF の「3連休は1日を休養調整日にする」など、その場の判断が要る日はここで指定する。")
+                Text("「カレンダー」でまとめてわりあてるのが基本。ここは1日だけ例外にしたいときに使う。")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
@@ -764,7 +1188,7 @@ struct DatesTab: View {
                         newMute = ""
                     }.disabled(newMute.isEmpty)
                 }
-                Text("学校にいる時間帯を消したいときは 08:35 / 12:25 / 13:10 を入れる。")
+                Text("すべての日で、この時刻だけ鳴らさない。授業中の時刻を消したいときに使う。")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -901,7 +1325,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func about() {
         let alert = NSAlert()
         alert.messageText = "チャイム"
-        alert.informativeText = "data/ に書いた学習カレンダーの予定どおりに"
+        alert.informativeText = "data/ に書いた予定どおりに"
                               + "学校のチャイムを鳴らす。\n\n"
                               + "フォルダ: \(Runner.root?.path ?? "見つからない")"
         alert.runModal()

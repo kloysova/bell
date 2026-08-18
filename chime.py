@@ -52,6 +52,82 @@ DEFAULT_CONFIG = {
     "mute_times": [],
 }
 
+# はじめて使うときに作る日課のひな形。アプリの「はじめる」から使う。
+STARTER_ROUTINES = {
+    "_note": "アプリの「設定 > 日課の編集」から書き換えられる。",
+    "routines": {
+        "学校平日": {"title": "学校のある平日", "events": [
+            {"time": "06:30", "label": "起床・朝食", "sound": "chime"},
+            {"time": "07:30", "label": "登校", "sound": "chime"},
+            {"time": "08:35", "label": "授業", "sound": "chime"},
+            {"time": "12:25", "label": "昼休み", "sound": "chime"},
+            {"time": "13:10", "label": "授業", "sound": "chime"},
+            {"time": "15:20", "label": "放課後", "sound": "chime"},
+            {"time": "17:30", "label": "帰宅・休憩", "sound": "chime"},
+            {"time": "19:00", "label": "夕食・入浴", "sound": "chime"},
+            {"time": "20:00", "label": "勉強", "sound": "chime"},
+            {"time": "22:00", "label": "就寝準備", "sound": "chime"},
+            {"time": "22:30", "label": "消灯", "sound": "night"}]},
+        "学校土曜": {"title": "学校のある土曜", "events": [
+            {"time": "06:30", "label": "起床・朝食", "sound": "chime"},
+            {"time": "07:30", "label": "登校", "sound": "chime"},
+            {"time": "08:35", "label": "授業", "sound": "chime"},
+            {"time": "12:25", "label": "帰宅・昼食", "sound": "chime"},
+            {"time": "14:00", "label": "勉強", "sound": "chime"},
+            {"time": "18:00", "label": "夕食・自由時間", "sound": "chime"},
+            {"time": "22:30", "label": "消灯", "sound": "night"}]},
+        "通常日曜": {"title": "日曜", "events": [
+            {"time": "08:00", "label": "起床・朝食", "sound": "chime"},
+            {"time": "09:30", "label": "勉強", "sound": "chime"},
+            {"time": "12:00", "label": "昼食・休憩", "sound": "chime"},
+            {"time": "14:00", "label": "勉強", "sound": "chime"},
+            {"time": "18:00", "label": "夕食・自由時間", "sound": "chime"},
+            {"time": "22:30", "label": "消灯", "sound": "night"}]},
+        "長期休暇A": {"title": "長期休暇 A", "events": [
+            {"time": "07:00", "label": "起床・朝食", "sound": "chime"},
+            {"time": "08:30", "label": "午前の勉強", "sound": "chime"},
+            {"time": "12:00", "label": "昼食・休憩", "sound": "chime"},
+            {"time": "13:30", "label": "午後の勉強", "sound": "chime"},
+            {"time": "18:00", "label": "夕食・入浴", "sound": "chime"},
+            {"time": "19:30", "label": "夜の勉強", "sound": "chime"},
+            {"time": "22:30", "label": "消灯", "sound": "night"}]},
+        "長期休暇B": {"title": "長期休暇 B", "events": [
+            {"time": "07:00", "label": "起床・朝食", "sound": "chime"},
+            {"time": "08:30", "label": "午前の勉強", "sound": "chime"},
+            {"time": "12:00", "label": "昼食・休憩", "sound": "chime"},
+            {"time": "13:30", "label": "午後の勉強", "sound": "chime"},
+            {"time": "18:00", "label": "夕食・入浴", "sound": "chime"},
+            {"time": "19:30", "label": "夜の勉強", "sound": "chime"},
+            {"time": "22:30", "label": "消灯", "sound": "night"}]},
+        "長期休暇休": {"title": "長期休暇 休養日", "events": [
+            {"time": "08:00", "label": "起床・朝食", "sound": "chime"},
+            {"time": "10:00", "label": "軽い復習", "sound": "chime"},
+            {"time": "12:00", "label": "昼食", "sound": "chime"},
+            {"time": "18:00", "label": "夕食・自由時間", "sound": "chime"},
+            {"time": "22:30", "label": "消灯", "sound": "night"}]},
+        "定期考査日": {"title": "定期考査の日", "events": [
+            {"time": "06:00", "label": "起床・最終確認", "sound": "chime"},
+            {"time": "07:30", "label": "登校", "sound": "chime"},
+            {"time": "14:00", "label": "帰宅・昼食", "sound": "chime"},
+            {"time": "15:00", "label": "翌日の科目の勉強", "sound": "chime"},
+            {"time": "18:00", "label": "夕食・入浴", "sound": "chime"},
+            {"time": "19:00", "label": "勉強", "sound": "chime"},
+            {"time": "22:30", "label": "消灯", "sound": "night"}]},
+        "休養調整日": {"title": "休養日", "events": [
+            {"time": "08:00", "label": "起床・朝食", "sound": "chime"},
+            {"time": "12:00", "label": "昼食", "sound": "chime"},
+            {"time": "18:00", "label": "夕食・自由時間", "sound": "chime"},
+            {"time": "22:30", "label": "消灯", "sound": "night"}]},
+        "祝日": {"title": "祝日", "events": [
+            {"time": "07:30", "label": "起床・朝食", "sound": "chime"},
+            {"time": "09:00", "label": "午前の勉強", "sound": "chime"},
+            {"time": "12:00", "label": "昼食・休憩", "sound": "chime"},
+            {"time": "14:00", "label": "午後の勉強", "sound": "chime"},
+            {"time": "18:00", "label": "夕食・入浴", "sound": "chime"},
+            {"time": "22:30", "label": "消灯", "sound": "night"}]},
+    },
+}
+
 # 月間カレンダーのラベルのうち、通常の学校日として扱うもの
 SCHOOL_MARKS = {"2学期開始", "3学期開始", "修了"}
 VACATIONS = {"夏休み", "冬休み", "春休み"}
@@ -70,8 +146,9 @@ def _load_required(name):
     if not path.exists():
         sys.exit(
             "data/%s が無い。\n"
-            "このリポジトリに日課データは同梱していないので、自分で用意する。\n"
-            "書き方は README の「data/ を用意する」を見る。" % name
+            "チャイム.app を開くと最初の画面から作れる。\n"
+            "ターミナルから作るなら:\n"
+            "  python3 chime.py init --start 2026-04-06 --end 2027-03-20" % name
         )
     return _load_json(path)
 
@@ -129,9 +206,13 @@ def day_type(date, calendar, cfg):
     if not (period["start"] <= key <= period["end"]):
         return None
 
-    label = calendar["days"].get(key)
-    if label is None:
-        return None
+    # アプリの「カレンダー」で日付に直接わりあてた日課タイプが最優先
+    assigned = calendar.get("types", {}).get(key)
+    if assigned:
+        return assigned
+
+    # ラベル（月間カレンダーのマス目の文字列）から推測する。書いてなければ曜日どおり。
+    label = calendar["days"].get(key, "")
     toks = label.split()
 
     # 長期休暇（A/B/休）が最優先。祝日と重なっても A/B/休 のサイクルを維持する
@@ -666,6 +747,14 @@ CONFIG_KEYS = ("enabled", "volume", "notify", "pre_chime_minutes", "grace_second
                "date_overrides", "disabled_dates", "mute_times")
 
 
+def _write_json(path, obj):
+    tmp = path.with_suffix(".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False, indent=1)
+        f.write("\n")
+    tmp.replace(path)
+
+
 def _emit(obj):
     json.dump(obj, sys.stdout, ensure_ascii=False)
     sys.stdout.write("\n")
@@ -754,6 +843,109 @@ def cmd_routine_set(args, calendar, routines, cfg):
     return _emit({"ok": True, "events": cleaned})
 
 
+def cmd_init(args):
+    """data/ が無いときに、最低限の calendar.json と routines.json を作る。"""
+    start = dt.date.fromisoformat(args.start)
+    end = dt.date.fromisoformat(args.end)
+    if end < start:
+        return _emit({"ok": False, "error": "終わりの日が始まりの日より前になっている"})
+
+    DATA.mkdir(exist_ok=True)
+    made = []
+    cal_path = DATA / "calendar.json"
+    if not cal_path.exists() or args.force:
+        calendar = {
+            "_note": "study_period が学習期間。types で日付に日課タイプを直接わりあてる。"
+                     "days は月間カレンダーのマス目の文字列（無い日は曜日どおりに決まる）。",
+            "study_period": {"start": start.isoformat(), "end": end.isoformat()},
+            "types": {},
+            "days": {},
+        }
+        _write_json(cal_path, calendar)
+        made.append("calendar.json")
+
+    rou_path = DATA / "routines.json"
+    if not rou_path.exists() or args.force:
+        _write_json(rou_path, STARTER_ROUTINES)
+        made.append("routines.json")
+
+    load_config()  # config.json が無ければここで作られる
+
+    # 音がまだ無ければここで合成しておく（初回のチャイムを待たせないため）。
+    # build_sounds() の進捗は stdout に出るので、JSON を汚さないよう stderr に逃がす。
+    if not all((SOUNDS / f).exists() for f in SOUND_FILES.values()):
+        saved, sys.stdout = sys.stdout, sys.stderr
+        try:
+            build_sounds()
+        finally:
+            sys.stdout = saved
+        made.append("sounds")
+
+    return _emit({"ok": True, "created": made, "root": str(ROOT)})
+
+
+def cmd_calendar_get(args, calendar, routines, cfg):
+    """アプリのカレンダー画面用。指定期間の各日がどの日課になるかを返す。"""
+    days = []
+    if args.start:
+        start = dt.date.fromisoformat(args.start)
+        for i in range(int(args.days)):
+            d = start + dt.timedelta(days=i)
+            key = d.isoformat()
+            name = day_type(d, calendar, cfg)
+            routine = routines["routines"].get(name) if name else None
+            days.append({
+                "date": key,
+                "weekday": WD[d.weekday()],
+                "label": calendar["days"].get(key, ""),
+                "assigned": calendar.get("types", {}).get(key),
+                "day_type": name,
+                "title": routine["title"] if routine else None,
+                "count": len(routine["events"]) if routine else 0,
+                "disabled": key in cfg.get("disabled_dates", []),
+            })
+    return _emit({
+        "study_period": calendar["study_period"],
+        "day_types": [{"key": k, "title": v["title"]}
+                      for k, v in routines["routines"].items()],
+        "days": days,
+    })
+
+
+def cmd_calendar_set(args, calendar, routines, cfg):
+    """学習期間と、日付ごとの日課タイプのわりあてを書き換える。"""
+    patch = json.loads(args.json)
+
+    if "study_period" in patch:
+        period = patch["study_period"]
+        try:
+            start = dt.date.fromisoformat(period["start"])
+            end = dt.date.fromisoformat(period["end"])
+        except (KeyError, ValueError):
+            return _emit({"ok": False, "error": "学習期間の日付の書き方が正しくない"})
+        if end < start:
+            return _emit({"ok": False, "error": "終わりの日が始まりの日より前になっている"})
+        calendar["study_period"] = {"start": start.isoformat(), "end": end.isoformat()}
+
+    if "types" in patch:
+        assigned = calendar.setdefault("types", {})
+        for key, value in patch["types"].items():
+            try:
+                dt.date.fromisoformat(key)
+            except ValueError:
+                return _emit({"ok": False, "error": "日付の書き方が正しくない: %s" % key})
+            if not value:
+                assigned.pop(key, None)
+                continue
+            if value not in routines["routines"]:
+                return _emit({"ok": False, "error": "不明な日課タイプ: %s" % value})
+            assigned[key] = value
+
+    _write_json(DATA / "calendar.json", calendar)
+    return _emit({"ok": True, "study_period": calendar["study_period"],
+                  "types": calendar.get("types", {})})
+
+
 def cmd_routines_get(args, calendar, routines, cfg):
     return _emit(routines)
 
@@ -809,6 +1001,15 @@ def main(argv=None):
     sp.add_argument("--days", default=3, type=int)
     sp.add_argument("--date")
     sub.add_parser("routines-get", help="routines.json をそのまま出す（アプリ用）")
+    sp = sub.add_parser("init", help="data/ を作る（はじめて使うとき）")
+    sp.add_argument("--start", required=True, help="学習期間の始まり YYYY-MM-DD")
+    sp.add_argument("--end", required=True, help="学習期間の終わり YYYY-MM-DD")
+    sp.add_argument("--force", action="store_true", help="既にあっても作り直す")
+    sp = sub.add_parser("calendar-get", help="日付ごとの日課を出す（アプリ用）")
+    sp.add_argument("--start", help="YYYY-MM-DD")
+    sp.add_argument("--days", default=42, type=int)
+    sp = sub.add_parser("calendar-set", help="学習期間と日付のわりあてを書き換える（アプリ用）")
+    sp.add_argument("--json", required=True)
     sp = sub.add_parser("config-set", help="設定を書き換える（アプリ用）")
     sp.add_argument("--json", required=True)
     sp = sub.add_parser("routine-set", help="日課の時刻表を書き換える（アプリ用）")
@@ -819,6 +1020,9 @@ def main(argv=None):
 
     args = p.parse_args(argv)
     cmd = args.cmd or "today"
+
+    if cmd == "init":
+        return cmd_init(args)
 
     calendar = load_calendar()
     routines = load_routines()
@@ -844,6 +1048,10 @@ def main(argv=None):
         return 0
     if cmd == "agenda":
         return cmd_agenda(args, calendar, routines, cfg)
+    if cmd == "calendar-get":
+        return cmd_calendar_get(args, calendar, routines, cfg)
+    if cmd == "calendar-set":
+        return cmd_calendar_set(args, calendar, routines, cfg)
     if cmd == "routines-get":
         return cmd_routines_get(args, calendar, routines, cfg)
     if cmd == "config-set":
