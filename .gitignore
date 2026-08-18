@@ -1,0 +1,12 @@
+# 個人の予定データ（各自で用意する）
+data/
+
+# 音（chime.py が合成して置く。音源を配布しないため追跡しない）
+sounds/
+
+logs/
+.DS_Store
+*.app/
+.venv/
+__pycache__/
+*.pyc
